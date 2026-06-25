@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI ดูดวงลายมืออัจฉริยะ</title>
+<style>
+  /* ============================================================
+     DESIGN TOKENS — Deep Space / Astrology Sci-Fi palette
+     ============================================================ */
+  :root {
+    --bg-void:       #080B14;   /* near-black background */
+    --bg-card:       #0E1225;   /* card surface */
+    --bg-inner:      #131830;   /* inset panels */
+    --accent-violet: #7B4FFF;   /* primary glow */
+    --accent-gold:   #C9A84C;   /* mystic gold */
+    --accent-cyan:   #3FD8E8;   /* scanner line / highlight */
+    --text-primary:  #E8E4F0;   /* ghost white */
+    --text-dim:      #6B6585;   /* muted label */
+    --border-soft:   rgba(123, 79, 255, 0.25);
+    --glow-violet:   rgba(123, 79, 255, 0.4);
+    --glow-gold:     rgba(201, 168, 76, 0.35);
+  }
+
+  /* ============================================================
+     RESET & BASE
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bg-void);
+    color: var(--text-primary);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 24px 16px 48px;
+    /* Subtle star-field: tiny CSS dot pattern */
+    background-image:
+      radial-gradient(ellipse 80% 40% at 50% 0%, rgba(123,79,255,0.12) 0%, transparent 70%),
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.35) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 15%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 10% 70%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 88% 60%, rgba(255,255,255,0.25) 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 80%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 62% 50%, rgba(255,255,255,0.15) 0%, transparent 100%);
+  }
+
+  /* ============================================================
+     HEADER / LOGO
+     ============================================================ */
+  .site-header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .logo-eyebrow {
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .logo-title {
+    font-size: clamp(22px, 5vw, 36px);
+    font-weight: 700;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--text-primary) 30%, var(--accent-violet) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+  }
+
+  .logo-subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    letter-spacing: 1px;
+  }
+
+  /* ============================================================
+     MAIN CARD
+     ============================================================ */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 480px;
+    padding: 28px 24px 32px;
+    box-shadow:
+      0 0 40px rgba(123,79,255,0.12),
+      0 4px 32px rgba(0,0,0,0.6);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Corner decorations — pure CSS astrology brackets */
+  .card::before, .card::after {
+    content: '';
+    position: absolute;
+    width: 24px; height: 24px;
+    border-color: var(--accent-gold);
+    border-style: solid;
+  }
+  .card::before { top: 14px; left: 14px; border-width: 2px 0 0 2px; }
+  .card::after  { bottom: 14px; right: 14px; border-width: 0 2px 2px 0; }
+
+  /* ============================================================
+     SECTION: CAMERA VIEW
+     ============================================================ */
+  #camera-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .camera-instruction {
+    font-size: 13px;
+    color: var(--text-dim);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* The camera viewport wrapper — square + relative for overlay */
+  .camera-viewport {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    aspect-ratio: 1 / 1;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-soft);
+    box-shadow: inset 0 0 32px rgba(0,0,0,0.8), 0 0 24px rgba(123,79,255,0.1);
+  }
+
+  /* Live video feed */
+  #video-feed {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transform: scaleX(-1); /* mirror for selfie-camera feel */
+  }
+
+  /* ---- Guide overlay box (dashed frame for palm placement) ---- */
+  .palm-guide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .palm-guide-box {
+    width: 70%;
+    height: 78%;
+    border: 2px dashed rgba(63, 216, 232, 0.6);
+    border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%; /* hand-like oval */
+    box-shadow: 0 0 16px rgba(63,216,232,0.25), inset 0 0 16px rgba(63,216,232,0.05);
+    position: relative;
+    animation: pulse-border 2.5s ease-in-out infinite;
+  }
+
+  /* Corner tick marks on the guide */
+  .palm-guide-box::before {
+    content: '';
+    position: absolute;
+    top: -6px; left: 50%;
+    transform: translateX(-50%);
+    width: 20px; height: 4px;
+    background: var(--accent-cyan);
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--accent-cyan);
+  }
+  .palm-guide-box::after {
+    content: '';
+    position: absolute;
+    bottom: -6px; left: 50%;
+    transform: translateX(-50%);
+    width: 20px; height: 4px;
+    background: var(--accent-cyan);
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--accent-cyan);
+  }
+
+  /* Guide label */
+  .palm-guide-label {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 0 8px var(--accent-cyan);
+  }
+
+  /* Constellation dots — decorative sci-fi flavor */
+  .constellation {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .star {
+    position: absolute;
+    width: 3px; height: 3px;
+    background: var(--accent-gold);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--accent-gold);
+    animation: twinkle 3s ease-in-out infinite;
+  }
+  .star:nth-child(1) { top: 12%; left: 15%; animation-delay: 0s; }
+  .star:nth-child(2) { top: 20%; right: 12%; animation-delay: 0.8s; }
+  .star:nth-child(3) { bottom: 18%; left: 10%; animation-delay: 1.4s; }
+  .star:nth-child(4) { bottom: 10%; right: 18%; animation-delay: 0.4s; }
+
+  /* Camera error / permission denied state */
+  #camera-error {
+    display: none;
+    background: rgba(255, 60, 60, 0.1);
+    border: 1px solid rgba(255,60,60,0.3);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    font-size: 14px;
+    color: #ff9999;
+    line-height: 1.6;
+  }
+
+  /* ============================================================
+     ANALYSE BUTTON
+     ============================================================ */
+  .btn-analyse {
+    width: 100%;
+    max-width: 380px;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, var(--accent-violet), #4A2FC4);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.3s;
+    box-shadow: 0 4px 20px rgba(123,79,255,0.5);
+  }
+
+  .btn-analyse::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .btn-analyse:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(123,79,255,0.65);
+  }
+
+  .btn-analyse:active { transform: translateY(0); }
+
+  .btn-icon { margin-right: 8px; font-size: 18px; }
+
+  /* ============================================================
+     SECTION: LOADING / PROCESSING
+     ============================================================ */
+  #loading-section {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 16px 0;
+  }
+
+  /* Rotating constellation spinner */
+  .spinner-ring {
+    width: 80px; height: 80px;
+    position: relative;
+  }
+  .spinner-ring svg {
+    width: 100%; height: 100%;
+    animation: spin 3s linear infinite;
+  }
+  .spinner-inner {
+    position: absolute;
+    inset: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-violet) 0%, transparent 70%);
+    animation: throb 1.5s ease-in-out infinite;
+  }
+
+  /* Scan line that sweeps across a captured thumbnail */
+  .capture-preview-wrap {
+    position: relative;
+    width: 160px; height: 160px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-soft);
+    background: #000;
+  }
+  #capture-thumb {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    filter: brightness(0.5) saturate(1.5) hue-rotate(20deg);
+  }
+  .scan-line {
+    position: absolute;
+    top: -4px; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+    box-shadow: 0 0 12px var(--accent-cyan);
+    animation: scan-sweep 1.8s ease-in-out infinite;
+  }
+
+  /* AI line trace overlay on thumb */
+  .palm-trace-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0.7;
+  }
+
+  .loading-text {
+    text-align: center;
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.8;
+  }
+  .loading-text em {
+    color: var(--accent-cyan);
+    font-style: normal;
+    font-size: 13px;
+    display: block;
+    margin-top: 6px;
+    animation: blink 1.2s step-end infinite;
+  }
+
+  /* AI processing steps indicator */
+  .ai-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 300px;
+  }
+  .ai-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .ai-step.active  { opacity: 1; transform: translateX(0); color: var(--accent-cyan); }
+  .ai-step.done    { opacity: 0.7; color: var(--accent-gold); transform: translateX(0); }
+  .ai-step-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px currentColor;
+  }
+
+  /* ============================================================
+     SECTION: RESULT
+     ============================================================ */
+  #result-section {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .result-header {
+    text-align: center;
+  }
+  .result-eyebrow {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .result-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  /* The captured palm image with overlay lines */
+  .result-palm-wrap {
+    position: relative;
+    width: 220px; height: 220px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid var(--accent-violet);
+    box-shadow: 0 0 28px rgba(123,79,255,0.45);
+  }
+  #result-image {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    filter: brightness(0.85) contrast(1.1);
+  }
+  /* Animated palm-line SVG overlay on result */
+  .result-palm-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  /* Score bar component */
+  .score-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    background: rgba(8,11,20,0.8);
+    border: 1px solid var(--accent-violet);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: var(--accent-gold);
+    letter-spacing: 1px;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  /* Fortune cards grid */
+  .fortune-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .fortune-card {
+    background: var(--bg-inner);
+    border: 1px solid rgba(123,79,255,0.2);
+    border-radius: 12px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Left accent bar */
+  .fortune-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 12px; bottom: 12px;
+    width: 3px;
+    border-radius: 2px;
+  }
+  .fortune-card.career::before  { background: var(--accent-violet); box-shadow: 0 0 8px var(--accent-violet); }
+  .fortune-card.finance::before { background: var(--accent-gold);   box-shadow: 0 0 8px var(--accent-gold); }
+  .fortune-card.love::before    { background: #FF6B8A;              box-shadow: 0 0 8px rgba(255,107,138,0.7); }
+
+  .fortune-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .fortune-icon { font-size: 18px; }
+  .fortune-category {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .fortune-stars {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--accent-gold);
+    letter-spacing: 1px;
+  }
+
+  .fortune-body {
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--text-primary);
+  }
+  .fortune-highlight {
+    display: inline-block;
+    background: rgba(123,79,255,0.15);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--accent-cyan);
+    font-size: 13px;
+    margin-top: 6px;
+  }
+
+  /* Palm line legend */
+  .palm-legend {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Rescan button */
+  .btn-rescan {
+    width: 100%;
+    max-width: 380px;
+    padding: 14px 24px;
+    background: transparent;
+    border: 2px solid var(--accent-violet);
+    border-radius: 12px;
+    color: var(--accent-violet);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  }
+  .btn-rescan:hover {
+    background: rgba(123,79,255,0.15);
+    box-shadow: 0 0 20px rgba(123,79,255,0.3);
+    color: var(--text-primary);
+  }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+  .site-footer {
+    margin-top: 28px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    letter-spacing: 0.5px;
+  }
+
+  /* ============================================================
+     KEYFRAME ANIMATIONS
+     ============================================================ */
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 16px rgba(63,216,232,0.25), inset 0 0 16px rgba(63,216,232,0.05); }
+    50%       { box-shadow: 0 0 28px rgba(63,216,232,0.5), inset 0 0 24px rgba(63,216,232,0.12); }
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50%       { opacity: 1;   transform: scale(1.6); }
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes throb {
+    0%, 100% { transform: scale(0.8); opacity: 0.4; }
+    50%       { transform: scale(1.1); opacity: 1; }
+  }
+  @keyframes scan-sweep {
+    0%   { top: -4px; opacity: 1; }
+    90%  { top: calc(100% + 4px); opacity: 1; }
+    100% { top: calc(100% + 4px); opacity: 0; }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+  @keyframes draw-line {
+    from { stroke-dashoffset: 200; }
+    to   { stroke-dashoffset: 0; }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Result sections animate in */
+  .animate-in {
+    animation: fade-up 0.5s ease both;
+  }
+  .delay-1 { animation-delay: 0.1s; }
+  .delay-2 { animation-delay: 0.25s; }
+  .delay-3 { animation-delay: 0.4s; }
+  .delay-4 { animation-delay: 0.55s; }
+  .delay-5 { animation-delay: 0.7s; }
+  .delay-6 { animation-delay: 0.85s; }
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+  @media (max-width: 400px) {
+    .card { padding: 20px 14px 24px; border-radius: 14px; }
+    .btn-analyse { font-size: 15px; padding: 14px; }
+    .result-palm-wrap { width: 180px; height: 180px; }
+  }
+
+  /* Reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="site-header">
+  <span class="logo-eyebrow">✦ ระบบปัญญาประดิษฐ์ ✦</span>
+  <h1 class="logo-title">AI ดูดวงลายมืออัจฉริยะ</h1>
+  <p class="logo-subtitle">วิเคราะห์เส้นชะตา · ทำนายอนาคต · ขับเคลื่อนโดย AI</p>
+</header>
+
+<!-- ============================================================
+     MAIN CARD
+     ============================================================ -->
+<main class="card" id="main-card">
+
+  <!-- ============================================================
+       SECTION 1: CAMERA VIEW
+       ============================================================ -->
+  <div id="camera-section">
+
+    <p class="camera-instruction">
+      วางฝ่ามือของคุณให้อยู่ภายในกรอบ<br>
+      แล้วกดปุ่มด้านล่างเพื่อให้ AI วิเคราะห์ลายมือ
+    </p>
+
+    <!-- Camera viewport with guide overlay -->
+    <div class="camera-viewport">
+      <!-- Live video -->
+      <video id="video-feed" autoplay playsinline muted></video>
+
+      <!-- Dashed palm guide frame -->
+      <div class="palm-guide">
+        <div class="palm-guide-box">
+          <span class="palm-guide-label">วางฝ่ามือที่นี่</span>
+        </div>
+      </div>
+
+      <!-- Decorative star particles -->
+      <div class="constellation">
+        <div class="star"></div>
+        <div class="star"></div>
+        <div class="star"></div>
+        <div class="star"></div>
+      </div>
+    </div>
+
+    <!-- Camera permission error (shown if denied) -->
+    <div id="camera-error">
+      🚫 ไม่สามารถเข้าถึงกล้องได้<br>
+      กรุณาอนุญาตการใช้งานกล้องในเบราว์เซอร์<br>
+      <small style="color: var(--text-dim);">Settings → Privacy → Camera</small>
+    </div>
+
+    <!-- Hidden canvas used to capture still frame -->
+    <canvas id="capture-canvas" style="display:none;"></canvas>
+
+    <!-- Analyse button -->
+    <button class="btn-analyse" id="btn-analyse" onclick="startAnalysis()">
+      <span class="btn-icon">🔮</span> วิเคราะห์ลายมือ
+    </button>
+
+  </div><!-- /#camera-section -->
+
+
+  <!-- ============================================================
+       SECTION 2: LOADING / PROCESSING
+       ============================================================ -->
+  <div id="loading-section">
+
+    <!-- Captured image with scan line -->
+    <div class="capture-preview-wrap">
+      <img id="capture-thumb" src="" alt="ภาพถ่ายฝ่ามือ" />
+      <div class="scan-line"></div>
+      <!-- Animated palm-line traces -->
+      <svg class="palm-trace-svg" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Life line -->
+        <path d="M 65 140 Q 45 100 50 65 Q 55 40 70 30"
+              stroke="#3FD8E8" stroke-width="1.5" stroke-linecap="round"
+              stroke-dasharray="200" stroke-dashoffset="200"
+              style="animation: draw-line 1.2s 0.3s ease forwards;" />
+        <!-- Head line -->
+        <path d="M 35 90 Q 75 85 110 95 Q 125 98 130 95"
+              stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round"
+              stroke-dasharray="200" stroke-dashoffset="200"
+              style="animation: draw-line 1.2s 0.8s ease forwards;" />
+        <!-- Heart line -->
+        <path d="M 30 70 Q 70 60 100 65 Q 120 68 130 62"
+              stroke="#FF6B8A" stroke-width="1.5" stroke-linecap="round"
+              stroke-dasharray="200" stroke-dashoffset="200"
+              style="animation: draw-line 1.2s 1.3s ease forwards;" />
+      </svg>
+    </div>
+
+    <!-- Spinner -->
+    <div class="spinner-ring">
+      <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="40" cy="40" r="34" stroke="rgba(123,79,255,0.2)" stroke-width="4" fill="none"/>
+        <path d="M 40 6 A 34 34 0 0 1 74 40" stroke="#7B4FFF" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <!-- Constellation node dots -->
+        <circle cx="40" cy="6"  r="3" fill="#C9A84C"/>
+        <circle cx="74" cy="40" r="3" fill="#7B4FFF"/>
+        <circle cx="6"  cy="40" r="2" fill="rgba(201,168,76,0.4)"/>
+      </svg>
+      <div class="spinner-inner"></div>
+    </div>
+
+    <div class="loading-text">
+      AI กำลังวิเคราะห์เส้นชีวิต เส้นสมอง และเส้นหัวใจ...
+      <em id="loading-status">กำลังตรวจจับรูปแบบลายมือ...</em>
+    </div>
+
+    <!-- Step-by-step AI process indicators -->
+    <div class="ai-steps">
+      <div class="ai-step" id="step-1"><div class="ai-step-dot"></div> ตรวจจับฝ่ามือด้วย Computer Vision</div>
+      <div class="ai-step" id="step-2"><div class="ai-step-dot"></div> วิเคราะห์เส้นชีวิต (Life Line)</div>
+      <div class="ai-step" id="step-3"><div class="ai-step-dot"></div> วิเคราะห์เส้นสมอง (Head Line)</div>
+      <div class="ai-step" id="step-4"><div class="ai-step-dot"></div> วิเคราะห์เส้นหัวใจ (Heart Line)</div>
+      <div class="ai-step" id="step-5"><div class="ai-step-dot"></div> สังเคราะห์คำทำนายด้วย Deep Learning</div>
+    </div>
+
+  </div><!-- /#loading-section -->
+
+
+  <!-- ============================================================
+       SECTION 3: RESULT
+       ============================================================ -->
+  <div id="result-section">
+
+    <div class="result-header animate-in">
+      <span class="result-eyebrow">✦ ผลการวิเคราะห์ลายมือ ✦</span>
+      <p class="result-title">ชะตาของคุณถูกถอดรหัสแล้ว</p>
+    </div>
+
+    <!-- Captured palm image with line overlay -->
+    <div class="result-palm-wrap animate-in delay-1">
+      <img id="result-image" src="" alt="ภาพวิเคราะห์ฝ่ามือ" />
+      <svg class="result-palm-svg" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 95 205 Q 65 150 70 95 Q 75 55 100 40"
+              stroke="#3FD8E8" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
+        <path d="M 45 130 Q 105 120 155 132 Q 175 136 182 131"
+              stroke="#C9A84C" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
+        <path d="M 40 105 Q 100 90 145 96 Q 170 100 182 92"
+              stroke="#FF6B8A" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
+      </svg>
+      <!-- Score badge -->
+      <div class="score-badge">คะแนนดวง<br><span style="font-size:16px;font-weight:700;color:var(--accent-gold);">87</span><span style="font-size:9px;">/100</span></div>
+    </div>
+
+    <!-- Palm line legend -->
+    <div class="palm-legend animate-in delay-2">
+      <div class="legend-item"><div class="legend-dot" style="background:#3FD8E8;"></div> เส้นชีวิต</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#C9A84C;"></div> เส้นสมอง</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FF6B8A;"></div> เส้นหัวใจ</div>
+    </div>
+
+    <!-- Fortune cards -->
+    <div class="fortune-grid">
+
+      <!-- Career card -->
+      <div class="fortune-card career animate-in delay-3">
+        <div class="fortune-card-head">
+          <span class="fortune-icon">💼</span>
+          <span class="fortune-category">การงาน</span>
+          <span class="fortune-stars">★★★★☆</span>
+        </div>
+        <p class="fortune-body">
+          เส้นสมองของคุณยาวและชัดเจน บ่งบอกถึงความคิดสร้างสรรค์และสติปัญญาที่เฉียบแหลม
+          ช่วง 6 เดือนข้างหน้านี้เป็นจังหวะทองของการเลื่อนตำแหน่งหรือการเริ่มต้นธุรกิจใหม่
+          ควรใช้โอกาสนำเสนอไอเดียใหม่ๆ อย่าลังเล
+        </p>
+        <span class="fortune-highlight">⚡ โดดเด่นที่สุดในช่วงเดือนตุลาคม–พฤศจิกายน</span>
+      </div>
+
+      <!-- Finance card -->
+      <div class="fortune-card finance animate-in delay-4">
+        <div class="fortune-card-head">
+          <span class="fortune-icon">💰</span>
+          <span class="fortune-category">การเงิน</span>
+          <span class="fortune-stars">★★★★★</span>
+        </div>
+        <p class="fortune-body">
+          เส้นชีวิตที่แข็งแกร่งและต่อเนื่องชี้ให้เห็นว่าคุณมีพื้นฐานทางการเงินที่มั่นคง
+          มีโอกาสได้รับเงินก้อนหรือผลตอบแทนจากการลงทุนในอนาคตอันใกล้
+          หลีกเลี่ยงการกู้หนี้นอกระบบในช่วงนี้
+        </p>
+        <span class="fortune-highlight">💎 ฤกษ์ดีสำหรับการออมและการลงทุนระยะยาว</span>
+      </div>
+
+      <!-- Love card -->
+      <div class="fortune-card love animate-in delay-5">
+        <div class="fortune-card-head">
+          <span class="fortune-icon">💖</span>
+          <span class="fortune-category">ความรัก</span>
+          <span class="fortune-stars">★★★☆☆</span>
+        </div>
+        <p class="fortune-body">
+          เส้นหัวใจที่โค้งงามบ่งบอกถึงจิตใจที่เปิดกว้างและเต็มไปด้วยความเมตตา
+          หากยังโสดอยู่ มีโอกาสพบเนื้อคู่ผ่านกิจกรรมสังคมหรือการทำงานร่วมกัน
+          หากมีคู่แล้ว ควรใช้เวลาพูดคุยเปิดใจกันมากขึ้นเพื่อเสริมความผูกพัน
+        </p>
+        <span class="fortune-highlight">🌸 จักรวาลเปิดทางให้ความรักในช่วงปลายปีนี้</span>
+      </div>
+
+    </div><!-- /.fortune-grid -->
+
+    <!-- Re-scan button -->
+    <button class="btn-rescan animate-in delay-6" onclick="resetToCamera()">
+      🔄 สแกนใหม่อีกครั้ง
+    </button>
+
+  </div><!-- /#result-section -->
+
+</main><!-- /.card -->
+
+<footer class="site-footer">
+  ✦ ผลลัพธ์นี้สร้างโดย AI เพื่อความบันเทิงเท่านั้น ✦<br>
+  ไม่ใช่การทำนายทางวิทยาศาสตร์หรือการแพทย์
+</footer>
+
+
+<!-- ============================================================
+     JAVASCRIPT — Camera, Capture & Animation Logic
+     ============================================================ -->
+<script>
+  /* ============================================================
+     GLOBAL STATE
+     ============================================================ */
+  let mediaStream = null;   // holds the active MediaStream object
+
+  /* ============================================================
+     CAMERA INITIALISATION
+     Requests camera permission and pipes the stream into <video>.
+     We prefer the back camera on mobile (environment) but fall
+     back to any available camera.
+     ============================================================ */
+  async function initCamera() {
+    const video = document.getElementById('video-feed');
+    const errorBox = document.getElementById('camera-error');
+
+    const constraints = {
+      video: {
+        facingMode: { ideal: 'environment' }, // prefer back camera on mobile
+        width:  { ideal: 1280 },
+        height: { ideal: 1280 }
+      },
+      audio: false
+    };
+
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = mediaStream;
+    } catch (err) {
+      // If back camera fails, try any camera
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        video.srcObject = mediaStream;
+      } catch (fallbackErr) {
+        console.error('Camera access denied:', fallbackErr);
+        errorBox.style.display = 'block';
+        document.getElementById('btn-analyse').disabled = true;
+        document.getElementById('btn-analyse').style.opacity = '0.4';
+      }
+    }
+  }
+
+  /* ============================================================
+     CAPTURE STILL FRAME
+     Draws the current video frame onto a hidden <canvas> and
+     returns the image as a data-URL (JPEG).
+     ============================================================ */
+  function captureFrame() {
+    const video  = document.getElementById('video-feed');
+    const canvas = document.getElementById('capture-canvas');
+
+    // Match canvas to actual video dimensions (or sensible default)
+    const w = video.videoWidth  || 640;
+    const h = video.videoHeight || 640;
+    canvas.width  = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext('2d');
+
+    // If the video is mirrored via CSS we draw it normally here so the
+    // saved image is the correct, unmirrored orientation.
+    ctx.drawImage(video, 0, 0, w, h);
+
+    return canvas.toDataURL('image/jpeg', 0.92);
+  }
+
+  /* ============================================================
+     SECTION SWITCHER HELPERS
+     ============================================================ */
+  function showSection(id) {
+    ['camera-section', 'loading-section', 'result-section'].forEach(s => {
+      const el = document.getElementById(s);
+      el.style.display = (s === id) ? 'flex' : 'none';
+    });
+  }
+
+  /* ============================================================
+     LOADING STEP SEQUENCER
+     Lights up each AI-step indicator in turn to create the
+     impression of incremental processing.
+     ============================================================ */
+  function runLoadingSteps() {
+    const steps = [
+      { id: 'step-1', delay: 200,  label: 'กำลังตรวจจับรูปแบบลายมือ...' },
+      { id: 'step-2', delay: 700,  label: 'วิเคราะห์เส้นชีวิต...' },
+      { id: 'step-3', delay: 1300, label: 'วิเคราะห์เส้นสมอง...' },
+      { id: 'step-4', delay: 1900, label: 'วิเคราะห์เส้นหัวใจ...' },
+      { id: 'step-5', delay: 2400, label: 'กำลังสังเคราะห์คำทำนาย...' },
+    ];
+
+    const statusEl = document.getElementById('loading-status');
+
+    // Activate each step with staggered delays
+    steps.forEach((step, i) => {
+      setTimeout(() => {
+        // Mark previous step as done
+        if (i > 0) {
+          document.getElementById(steps[i - 1].id).classList.remove('active');
+          document.getElementById(steps[i - 1].id).classList.add('done');
+        }
+        document.getElementById(step.id).classList.add('active');
+        statusEl.textContent = step.label;
+      }, step.delay);
+    });
+
+    // Final cleanup: mark last step done
+    setTimeout(() => {
+      document.getElementById(steps[steps.length - 1].id).classList.remove('active');
+      document.getElementById(steps[steps.length - 1].id).classList.add('done');
+    }, 2700);
+  }
+
+  /* ============================================================
+     START ANALYSIS
+     Called when the user clicks "วิเคราะห์ลายมือ"
+     1. Capture still frame
+     2. Switch to loading view
+     3. Wait 3 s (mock AI processing)
+     4. Switch to result view
+     ============================================================ */
+  function startAnalysis() {
+    // 1. Capture the current video frame
+    const imageData = captureFrame();
+
+    // 2. Populate the loading thumbnail and result image with the capture
+    document.getElementById('capture-thumb').src = imageData;
+    document.getElementById('result-image').src  = imageData;
+
+    // 3. Show loading screen
+    showSection('loading-section');
+
+    // 4. Run the animated step indicators
+    runLoadingSteps();
+
+    // 5. After 3 s, reveal the result section
+    setTimeout(() => {
+      showResult();
+    }, 3100);
+  }
+
+  /* ============================================================
+     SHOW RESULT
+     Switches to the result section and re-triggers CSS animations.
+     ============================================================ */
+  function showResult() {
+    showSection('result-section');
+
+    // Re-trigger animate-in classes by toggling them
+    document.querySelectorAll('.animate-in').forEach(el => {
+      el.style.animation = 'none';
+      // Force reflow so the browser registers the reset
+      void el.offsetHeight;
+      el.style.animation = '';
+    });
+  }
+
+  /* ============================================================
+     RESET TO CAMERA
+     Called by the "สแกนใหม่อีกครั้ง" button.
+     Resets AI-step states and returns to the camera view.
+     ============================================================ */
+  function resetToCamera() {
+    // Clear loading step states
+    ['step-1','step-2','step-3','step-4','step-5'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('active', 'done');
+    });
+
+    showSection('camera-section');
+  }
+
+  /* ============================================================
+     BOOT — initialise camera when page loads
+     ============================================================ */
+  window.addEventListener('DOMContentLoaded', () => {
+    showSection('camera-section');
+    initCamera();
+  });
+
+  /* ============================================================
+     CLEANUP — stop camera stream when leaving the page
+     ============================================================ */
+  window.addEventListener('beforeunload', () => {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+    }
+  });
+</script>
+</body>
+</html>
